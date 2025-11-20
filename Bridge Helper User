@@ -1,0 +1,662 @@
+// ==UserScript==
+// @name         Enhanced Bridge Helper
+// @namespace    http://tampermonkey.net/
+// @version      1.8
+// @description  Bridge Helper with dynamic sections and formatted output
+// @author       @thifanym
+// @match        https://skynet.amazon.dev/*
+// @downloadURL  https://raw.githubusercontent.com/YOUR_USERNAME/bridge-helper-script/main/bridge-helper.user.js
+// @updateURL    https://raw.githubusercontent.com/YOUR_USERNAME/bridge-helper-script/main/bridge-helper.user.js
+// @grant        GM_addStyle
+// @run-at       document-end
+// ==/UserScript==
+
+(function() {
+    'use strict';
+
+        GM_addStyle(`
+        .adapt-helper-modal {
+            position: fixed;
+            top: 70px;
+            right: 20px;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.3);
+            z-index: 100000;
+            width: 800px;
+            font-family: Arial, sans-serif;
+            max-height: calc(100vh - 120px);
+            overflow-y: auto;
+            transition: all 0.3s ease;
+        }
+        .adapt-helper-button {
+            background: #00A8E1;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            position: fixed;
+            top: 50px;
+            right: 10px;
+            z-index: 999999;
+        }
+        .pre-rc-section {
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 4px;
+            background-color: #f9f9f9;
+            transition: all 0.3s ease;
+        }
+        .pre-rc-section.answered {
+            padding: 8px;
+            margin-bottom: 8px;
+        }
+        .pre-rc-section.answered .section-content {
+            display: none;
+        }
+        .pre-rc-section.answered .section-summary {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .section-summary {
+            display: none;
+            font-size: 0.9em;
+            color: #666;
+            flex: 1;
+        }
+        .summary-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            width: 100%;
+        }
+        .edit-button {
+            background: #00A8E1;
+            color: white;
+            border: none;
+            padding: 3px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-left: auto;
+        }
+        .edit-button:hover {
+            background: #0088B4;
+        }
+        .checkmark {
+            color: #4CAF50;
+            font-weight: bold;
+            margin-right: 5px;
+        }
+        .confirm-button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 5px;
+            display: none;
+        }
+        .section-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .question-text {
+            font-size: 12px;
+            color: #666;
+            margin: 5px 0;
+        }
+        .details-input {
+            margin-top: 10px;
+        }
+        .details-input textarea {
+            width: 100%;
+            min-height: 60px;
+            max-height: 150px;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            resize: vertical;
+            font-family: Arial, sans-serif;
+            font-size: 14px;
+            line-height: 1.4;
+            margin-bottom: 5px;
+        }
+        .root-cause-section {
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 4px;
+            background-color: #f9f9f9;
+        }
+        .control-units-container {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+            width: 100%;
+        }
+        .add-button, .add-corrective-action {
+            background: #4CAF50;
+            color: #333333;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px 0;
+            font-weight: 500;
+        }
+        .add-corrective-action {
+            margin-top: 15px;
+        }
+        .remove-button,
+        .root-cause-section .remove-button,
+        .corrective-action .remove-button {
+            background: #e0e0e0;
+            color: #666;
+            border: none;
+            padding: 3px 8px;
+            border-radius: 15px;
+            cursor: pointer;
+            margin-left: 10px;
+            font-size: 12px;
+        }
+        .generate-bridge-button {
+            background: #00A8E1;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-top: 15px;
+            width: 100%;
+        }
+        .generate-bridge-button:hover {
+            background: #0088B4;
+        }
+        .bridge-output {
+            margin-top: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .bridge-section {
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+        }
+        .bridge-section-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+            padding-bottom: 5px;
+            border-bottom: 2px solid #00A8E1;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .bridge-section-content {
+            white-space: pre-wrap;
+            font-family: Arial, sans-serif;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        .copy-button {
+            background: #00A8E1;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .root-cause-section textarea,
+        .corrective-action textarea {
+            width: 100%;
+            box-sizing: border-box;
+            min-height: 60px;
+            padding: 8px;
+            margin-bottom: 10px;
+        }
+    `);
+
+
+    function createPreRCSection(title, question, requiresDetailsOnYes = false) {
+        const section = document.createElement('div');
+        section.className = 'pre-rc-section';
+        section.innerHTML = `
+            <div class="section-title">
+                ${title}
+                <span class="checkmark" style="display: none;">✓</span>
+            </div>
+            <div class="summary-container">
+                <div class="section-summary"></div>
+                <button type="button" class="edit-button" style="display: none;">Edit</button>
+            </div>
+            <div class="section-content">
+                <div class="question-text">${question}</div>
+                <div class="radio-group">
+                    <input type="radio" name="${title.replace(/\s/g, '')}" value="yes" id="${title.replace(/\s/g, '')}-yes">
+                    <label for="${title.replace(/\s/g, '')}-yes">Yes</label>
+                    <input type="radio" name="${title.replace(/\s/g, '')}" value="no" id="${title.replace(/\s/g, '')}-no">
+                    <label for="${title.replace(/\s/g, '')}-no">No</label>
+                </div>
+                <div class="details-input" style="display: none;">
+                    <textarea placeholder="Provide details..." required></textarea>
+                    <button type="button" class="confirm-button" style="display: none;">Confirm</button>
+                </div>
+            </div>
+        `;
+
+
+        // Add radio button listeners
+        section.querySelectorAll('input[type="radio"]').forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                const detailsInput = section.querySelector('.details-input');
+                const textarea = detailsInput.querySelector('textarea');
+                const confirmButton = detailsInput.querySelector('.confirm-button');
+                const isMechanicalIssues = title === 'Mechanical Issues';
+
+                if ((isMechanicalIssues && e.target.value === 'yes') ||
+                    (!isMechanicalIssues && e.target.value === 'no')) {
+                    detailsInput.style.display = 'block';
+                    textarea.required = true;
+                    textarea.value = ''; // Clear previous input
+                    confirmButton.style.display = 'none';
+
+                    // Show confirm button only if there's text
+                    textarea.addEventListener('input', () => {
+                        confirmButton.style.display = textarea.value.trim() ? 'block' : 'none';
+                    });
+                } else {
+                    detailsInput.style.display = 'none';
+                    textarea.required = false;
+                    updateSectionStatus(section, title, e.target.value);
+                }
+            });
+        });
+
+        // Add confirm button listener
+        const confirmButton = section.querySelector('.confirm-button');
+        confirmButton.addEventListener('click', () => {
+            const textarea = section.querySelector('textarea');
+            if (textarea.value.trim()) {
+                updateSectionStatus(section, title, section.querySelector('input[type="radio"]:checked').value);
+            }
+        });
+
+        // Add edit button listener
+        const editButton = section.querySelector('.edit-button');
+    editButton.addEventListener('click', (e) => {
+        e.stopPropagation();
+        section.classList.remove('answered');
+        section.querySelector('.checkmark').style.display = 'none';
+        section.querySelector('.section-content').style.display = 'block';
+        section.querySelector('.section-summary').style.display = 'none';
+        editButton.style.display = 'none';
+
+        // Restore the previous radio selection
+        const previousValue = section.querySelector('input[type="radio"]:checked').value;
+        if ((title === 'Mechanical Issues' && previousValue === 'yes') ||
+            (title !== 'Mechanical Issues' && previousValue === 'no')) {
+            section.querySelector('.details-input').style.display = 'block';
+        }
+        adjustModalSize();
+        });
+
+        return section;
+    }
+
+    function updateSectionStatus(section, title, response) {
+        const details = section.querySelector('.details-input textarea')?.value || '';
+        const checkmark = section.querySelector('.checkmark');
+        const summary = section.querySelector('.section-summary');
+        const editButton = section.querySelector('.edit-button');
+        const isMechanicalIssues = title === 'Mechanical Issues';
+
+        let summaryText = '';
+        if (response === 'yes') {
+            if (isMechanicalIssues && details) {
+                summaryText = `${title}: Issues found - ${details}`;
+            } else {
+                summaryText = `${title}: Confirmed`;
+            }
+        } else {
+            summaryText = `${title}: Not confirmed${details ? ` - ${details}` : ''}`;
+        }
+
+        summary.style.display = 'block';
+        summary.textContent = summaryText;
+        checkmark.style.display = 'inline';
+        editButton.style.display = 'inline';
+        section.classList.add('answered');
+        section.querySelector('.section-content').style.display = 'none';
+
+        adjustModalSize();
+    }
+
+    // Rest of your existing functions remain the same until createRootCauseSection
+
+    function createRootCauseSection(number) {
+        const section = document.createElement('div');
+        section.className = 'root-cause-section';
+        section.innerHTML = `
+            <div class="section-title">
+                Root Cause ${number}
+                <button type="button" class="remove-button">×</button>
+            </div>
+            <textarea class="rc-textarea" placeholder="Enter root cause details (5 whys analysis)..."></textarea>
+            <div class="control-units-container">
+                <select class="controllability-select">
+                    <option value="">Select controllability...</option>
+                    <option value="fc">FC Controllable</option>
+                    <option value="non-fc">Non-FC Controllable</option>
+                </select>
+                <input type="number" class="units-input" placeholder="Units" min="0">
+            </div>
+            <button type="button" class="add-button add-corrective-action">+ Add First Response</button>
+            <div class="corrective-actions-container"></div>
+        `;
+
+        section.querySelector('.remove-button').addEventListener('click', () => {
+            section.remove();
+            adjustModalSize();
+        });
+
+        section.querySelector('.add-corrective-action').addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const container = section.querySelector('.corrective-actions-container');
+            container.appendChild(createCorrectiveAction(container.children.length + 1));
+            adjustModalSize();
+        });
+
+        return section;
+    }
+
+    function createCorrectiveAction(number) {
+        const action = document.createElement('div');
+        action.className = 'corrective-action';
+        action.innerHTML = `
+            <div class="section-title">
+                First Response ${number}
+                <button type="button" class="remove-button">×</button>
+            </div>
+            <textarea placeholder="Enter first response details..."></textarea>
+        `;
+
+        action.querySelector('.remove-button').addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            action.remove();
+            adjustModalSize();
+        });
+
+        return action;
+    }
+
+   function formatBridgeOutput(formData) {
+    const sections = {
+        problemStatement: '',
+        firstResponse: '',
+        rootCauses: ''
+    };
+
+    // Format problem statement
+    const problems = [];
+    Object.entries(formData.preRC).forEach(([title, data]) => {
+        const cleanTitle = title.split('\n')[0].trim();
+
+        if (cleanTitle === 'Mechanical Issues') {
+            if (data.response === 'yes') {
+                problems.push(`Mechanical Issues: X Issues found - ${data.details}`);
+            } else {
+                problems.push(`Mechanical Issues: ✓ No MHE Constraint`);
+            }
+        } else if (cleanTitle === 'Sorter Health') {
+            if (data.response === 'yes') {
+                problems.push(`Sorter Health: ✓ No Sorter Health constraint`);
+            } else {
+                problems.push(`Sorter Health: X ${data.details}`);
+            }
+        } else {
+            // For all other questions (first 5)
+            if (data.response === 'yes') {
+                problems.push(`${cleanTitle}: ✓ Process followed and relevant actions taken`);
+            } else {
+                problems.push(`${cleanTitle}: X ${data.details}`);
+            }
+        }
+    });
+
+    sections.problemStatement = problems.join('\n');
+
+    // Format first response
+    sections.firstResponse = formData.correctiveActions.map((action, index) =>
+        `${index + 1}. ${action}`
+    ).join('\n');
+
+    // Format root causes
+    sections.rootCauses = formData.rootCauses.map((rc, index) =>
+        `Root Cause ${index + 1}:\n${rc.cause}\n` +
+        `Controllability: ${rc.controllability === 'fc' ? 'FC Controllable' : 'Non-FC Controllable'}\n` +
+        `Units Impacted: ${rc.units}`
+    ).join('\n\n');
+
+    return sections;
+}
+
+
+    function createHelperWindow() {
+        const modal = document.createElement('div');
+        modal.className = 'adapt-helper-modal';
+        modal.innerHTML = `
+            <span class="adapt-helper-close" style="cursor: pointer; float: right;">×</span>
+            <h2>Bridge Helper</h2>
+            <form class="adapt-helper-form">
+                <div class="pre-rc-sections"></div>
+                <div class="root-causes-container"></div>
+                <button type="button" class="add-button" id="add-root-cause">+ Add Root Cause</button>
+                <button type="button" class="generate-bridge-button">Generate Bridge</button>
+                <div class="bridge-output" style="display: none;"></div>
+            </form>
+        `;
+
+        // Add pre-RC sections
+        const preRCContainer = modal.querySelector('.pre-rc-sections');
+        [
+            ['Lagrange/TRB', 'Did you achieve declared process path level capacity till CPT from the point of TRB trigger or FT SLA?'],
+            ['Safe Cancel', 'Did you execute safe cancellations for non RUSH shipments if NND risk was >100%?'],
+            ['Dwells', 'Dwells were clean?'],
+            ['C7 Monitoring', 'C7 have been monitored?'],
+            ['C15 Threshold', 'C15 were under threshold?'],
+            ['Sorter Health', 'Was Sorter recirc/health good or under 5%?'],
+            ['Mechanical Issues', 'Were there any mechanical issues?', true]
+        ].forEach(([title, question, requiresDetailsOnYes]) => {
+            preRCContainer.appendChild(createPreRCSection(title, question, requiresDetailsOnYes));
+        });
+
+        // Add Root Cause button handler
+        modal.querySelector('#add-root-cause').addEventListener('click', (e) => {
+            e.preventDefault();
+            const container = modal.querySelector('.root-causes-container');
+            container.appendChild(createRootCauseSection(container.children.length + 1));
+            adjustModalSize();
+        });
+
+        // Generate Bridge button handler
+        modal.querySelector('.generate-bridge-button').addEventListener('click', (e) => {
+            e.preventDefault();
+            const formData = {
+                preRC: {},
+                rootCauses: [],
+                correctiveActions: []
+            };
+
+            // Gather pre-RC data
+            modal.querySelectorAll('.pre-rc-section').forEach(section => {
+                const title = section.querySelector('.section-title').textContent.trim();
+                const response = section.querySelector('input[type="radio"]:checked')?.value;
+                const details = section.querySelector('.details-input textarea')?.value || '';
+
+                if (response) {
+                    formData.preRC[title] = { response, details };
+                }
+            });
+
+            // Gather root causes and corrective actions
+            modal.querySelectorAll('.root-cause-section').forEach(section => {
+                const cause = section.querySelector('.rc-textarea').value.trim();
+                if (cause) {
+                    formData.rootCauses.push({
+                        cause,
+                        controllability: section.querySelector('.controllability-select').value,
+                        units: section.querySelector('.units-input').value
+                    });
+
+                    // Gather corrective actions for this root cause
+                    section.querySelectorAll('.corrective-action textarea').forEach(textarea => {
+                        if (textarea.value.trim()) {
+                            formData.correctiveActions.push(textarea.value.trim());
+                        }
+                    });
+                }
+            });
+
+            // Generate and display bridge output
+            const sections = formatBridgeOutput(formData);
+            const outputDiv = modal.querySelector('.bridge-output');
+            outputDiv.innerHTML = `
+                <div class="bridge-section">
+                    <div class="bridge-section-title">
+                        Problem Statement
+                        <button type="button" class="copy-button">Copy</button>
+                    </div>
+                    <div class="bridge-section-content">${sections.problemStatement}</div>
+                </div>
+                <div class="bridge-section">
+                    <div class="bridge-section-title">
+                        First Response
+                        <button type="button" class="copy-button">Copy</button>
+                    </div>
+                    <div class="bridge-section-content">${sections.firstResponse}</div>
+                </div>
+                <div class="bridge-section">
+                    <div class="bridge-section-title">
+                        Root Causes
+                        <button type="button" class="copy-button">Copy</button>
+                    </div>
+                    <div class="bridge-section-content">${sections.rootCauses}</div>
+                </div>
+            `;
+
+            // Add copy functionality
+            outputDiv.querySelectorAll('.copy-button').forEach(button => {
+                button.addEventListener('click', () => {
+                    const content = button.parentElement.nextElementSibling.textContent;
+                    navigator.clipboard.writeText(content);
+                    button.textContent = 'Copied!';
+                    setTimeout(() => button.textContent = 'Copy', 2000);
+                });
+            });
+
+            outputDiv.style.display = 'block';
+                    // After generating the bridge, collapse the root cause sections
+        modal.querySelectorAll('.root-cause-section').forEach(section => {
+            const sectionContent = section.querySelector('.rc-textarea').parentElement;
+            const title = section.querySelector('.section-title');
+
+            // Create summary of the root cause
+            const summary = document.createElement('div');
+            summary.className = 'section-summary';
+            summary.style.display = 'none';
+
+            // Create edit button
+            const editButton = document.createElement('button');
+            editButton.className = 'edit-button';
+            editButton.textContent = 'Edit';
+            editButton.style.display = 'none';
+
+            // Add to section
+            section.insertBefore(summary, sectionContent);
+            title.appendChild(editButton);
+
+            // Update summary and collapse
+            const rcText = section.querySelector('.rc-textarea').value;
+            if (rcText) {
+                summary.textContent = rcText.substring(0, 50) + (rcText.length > 50 ? '...' : '');
+                summary.style.display = 'block';
+                editButton.style.display = 'inline';
+                sectionContent.style.display = 'none';
+            }
+
+            // Add edit functionality
+            editButton.addEventListener('click', (e) => {
+                e.stopPropagation();
+                summary.style.display = 'none';
+                editButton.style.display = 'none';
+                sectionContent.style.display = 'block';
+            });
+        });
+
+        });
+
+        modal.querySelector('.adapt-helper-close').addEventListener('click', () => modal.remove());
+
+        return modal;
+    }
+
+    function createFloatingButton() {
+        const button = document.createElement('button');
+        button.id = 'bridge-helper-float';
+        button.className = 'adapt-helper-button';
+        button.textContent = 'Bridge Helper';
+        button.onclick = () => {
+            const existingModal = document.querySelector('.adapt-helper-modal');
+            if (existingModal) {
+                existingModal.remove();
+            }
+            document.body.appendChild(createHelperWindow());
+        };
+        document.body.appendChild(button);
+    }
+
+    // Initialize
+    function initialize() {
+        const existingButton = document.getElementById('bridge-helper-float');
+        if (existingButton) {
+            existingButton.remove();
+        }
+        createFloatingButton();
+    }
+
+    // Initial load
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initialize);
+    } else {
+        initialize();
+    }
+
+    // Handle URL changes
+    let lastUrl = location.href;
+    new MutationObserver(() => {
+        const url = location.href;
+        if (url !== lastUrl) {
+            lastUrl = url;
+            initialize();
+        }
+    }).observe(document, {subtree: true, childList: true});
+
+    // Handle history changes
+    window.addEventListener('popstate', initialize);
+    window.addEventListener('pushState', initialize);
+    window.addEventListener('replaceState', initialize);
+})();
