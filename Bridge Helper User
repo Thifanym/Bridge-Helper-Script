@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Enhanced Bridge Helper
 // @namespace    http://tampermonkey.net/
-// @version      1.1
+// @version      1.0
 // @description  Bridge Helper with dynamic sections and formatted output
 // @author       @thifanym
 // @match        https://skynet.amazon.dev/*
@@ -255,6 +255,27 @@
             padding: 8px;
             margin-bottom: 10px;
         }
+        .question-text {
+        font-size: 14px !important;
+        color: #666;
+        margin: 5px 0;
+        line-height: 1.4;
+    }
+
+    .details-input textarea {
+        width: 100%;
+        min-height: 60px;
+        max-height: 150px;
+        padding: 8px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        resize: vertical;
+        font-family: Arial, sans-serif;
+        font-size: 14px;
+        line-height: 1.4;
+        margin-bottom: 5px;
+        box-sizing: border-box;
+    }
     `);
 
 
@@ -298,84 +319,87 @@
     }
 
     function createPreRCSection(title, question, requiresDetailsOnYes = false) {
-        const section = document.createElement('div');
-        section.className = 'pre-rc-section';
-        section.innerHTML = `
-            <div class="section-title">
-                ${title}
-                <span class="checkmark" style="display: none;">✓</span>
+    const section = document.createElement('div');
+    section.className = 'pre-rc-section';
+    section.innerHTML = `
+        <div class="section-title">
+            ${title}
+            <span class="checkmark" style="display: none;">✓</span>
+        </div>
+        <div class="summary-container">
+            <div class="section-summary"></div>
+            <button type="button" class="edit-button" style="display: none;">Edit</button>
+        </div>
+        <div class="section-content">
+            <div class="question-text">${question}</div>
+            <div class="radio-group">
+                <input type="radio" name="${title.replace(/\s/g, '')}" value="yes" id="${title.replace(/\s/g, '')}-yes">
+                <label for="${title.replace(/\s/g, '')}-yes">Yes</label>
+                <input type="radio" name="${title.replace(/\s/g, '')}" value="no" id="${title.replace(/\s/g, '')}-no">
+                <label for="${title.replace(/\s/g, '')}-no">No</label>
             </div>
-            <div class="summary-container">
-                <div class="section-summary"></div>
-                <button type="button" class="edit-button" style="display: none;">Edit</button>
+            <div class="details-input" style="display: none;">
+                <textarea placeholder="Provide details..." required></textarea>
+                <button type="button" class="confirm-button" style="display: none;">Confirm</button>
             </div>
-            <div class="section-content">
-                <div class="question-text">${question}</div>
-                <div class="radio-group">
-                    <input type="radio" name="${title.replace(/\s/g, '')}" value="yes" id="${title.replace(/\s/g, '')}-yes">
-                    <label for="${title.replace(/\s/g, '')}-yes">Yes</label>
-                    <input type="radio" name="${title.replace(/\s/g, '')}" value="no" id="${title.replace(/\s/g, '')}-no">
-                    <label for="${title.replace(/\s/g, '')}-no">No</label>
-                </div>
-                <div class="details-input" style="display: none;">
-                    <textarea placeholder="Provide details..." required></textarea>
-                    <button type="button" class="confirm-button" style="display: none;">Confirm</button>
-                </div>
-            </div>
-        `;
+        </div>
+    `;
 
-        section.querySelectorAll('input[type="radio"]').forEach(radio => {
-            radio.addEventListener('change', (e) => {
-                const detailsInput = section.querySelector('.details-input');
-                const textarea = detailsInput.querySelector('textarea');
-                const confirmButton = detailsInput.querySelector('.confirm-button');
-                const isMechanicalIssues = title === 'Mechanical Issues';
+    // Add radio button listeners
+    section.querySelectorAll('input[type="radio"]').forEach(radio => {
+        radio.addEventListener('change', (e) => {
+            const detailsInput = section.querySelector('.details-input');
+            const textarea = detailsInput.querySelector('textarea');
+            const confirmButton = detailsInput.querySelector('.confirm-button');
 
-                if ((isMechanicalIssues && e.target.value === 'yes') ||
-                    (!isMechanicalIssues && e.target.va.value === 'no')) {
-                    detailsInput.style.display = 'block';
-                    textarea.required = true;
-                    textarea.value = '';
-                    confirmButton.style.display = 'none';
+            // Show details input when answer is "no" for all questions
+            if (e.target.value === 'no') {
+                detailsInput.style.display = 'block';
+                textarea.required = true;
+                textarea.value = ''; // Clear previous input
+                confirmButton.style.display = 'none';
 
-                    textarea.addEventListener('input', () => {
-                        confirmButton.style.display = textarea.value.trim() ? 'block' : 'none';
-                    });
-                } else {
-                    detailsInput.style.display = 'none';
-                    textarea.required = false;
-                    updateSectionStatus(section, title, e.target.value);
-                }
-            });
-        });
-
-        const confirmButton = section.querySelector('.confirm-button');
-        confirmButton.addEventListener('click', () => {
-            const textarea = section.querySelector('textarea');
-            if (textarea.value.trim()) {
-                updateSectionStatus(section, title, section.querySelector('input[type="radio"]:checked').value);
+                // Show confirm button only if there's text
+                textarea.addEventListener('input', () => {
+                    confirmButton.style.display = textarea.value.trim() ? 'block' : 'none';
+                });
+            } else {
+                detailsInput.style.display = 'none';
+                textarea.required = false;
+                updateSectionStatus(section, title, e.target.value);
             }
         });
+    });
 
-        const editButton = section.querySelector('.edit-button');
-        editButton.addEventListener('click', (e) => {
-            e.stopPropagation();
-            sectiotion.classList.remove('answered');
-            section.querySelector('.checkmark').style.display = 'none';
-            section.querySelector('.section-content').style.display = 'block';
-            section.querySelector('.section-summary').style.display = 'none';
-            editButton.style.display = 'none';
+    // Add confirm button listener
+    const confirmButton = section.querySelector('.confirm-button');
+    confirmButton.addEventListener('click', () => {
+        const textarea = section.querySelector('textarea');
+        if (textarea.value.trim()) {
+            updateSectionStatus(section, title, section.querySelector('input[type="radio"]:checked').value);
+        }
+    });
 
-            const previousValue = section.querySelector('input[type="radio"]:chechecked').value;
-            if ((title === 'Mechanical Issues' && previousValue === 'yes') ||
-                (title !== 'Mechanical Issues' && previousValue === 'no')) {
-                section.querySelector('.details-input').style.display = 'block';
-            }
-            adjustModalSize();
-        });
+    // Add edit button listener
+    const editButton = section.querySelector('.edit-button');
+    editButton.addEventListener('click', (e) => {
+        e.stopPropagation();
+        section.classList.remove('answered');
+        section.querySelector('.checkmark').style.display = 'none';
+        section.querySelector('.section-content').style.display = 'block';
+        section.querySelector('.section-summary').style.display = 'none';
+        editButton.style.display = 'none';
 
-        return section;
-    }
+        // Restore the previous radio selection
+        const previousValue = section.querySelector('input[type="radio"]:checked').value;
+        if (previousValue === 'no') {
+            section.querySelector('.details-input').style.display = 'block';
+        }
+        adjustModalSize();
+    });
+
+    return section;
+}
 
     function createRootCauseSection(number) {
         const section = document.createElement('div');
@@ -520,7 +544,7 @@
             ['C7 Monitoring', 'C7 have been monitored?'],
             ['C15 Threshold', 'C15 were under threshold?'],
             ['Sorter Health', 'Was Sorter recirc/health good or under 5%?'],
-            ['Mechanical Issues', 'Were there any mechanical issues?', true]
+            ['Mechanical Issues', 'Was MHE operating as expected - without constraint?', true]
         ].forEach(([title, question, requiresDetailsOnYes]) => {
             preRCContainer.appendChild(createPreRCSection(title, question, requiresDetailsOnYes));
         });
