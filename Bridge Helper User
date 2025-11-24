@@ -14,7 +14,36 @@
 (function() {
     'use strict';
 
-        GM_addStyle(`
+    GM_addStyle(`
+        /* New styles for collapsible bridge information */
+        .bridge-info-collapsible {
+            background-color: #00A8E1;
+            color: white;
+            cursor: pointer;
+            padding: 10px 15px;
+            width: 100%;
+            border: none;
+            text-align: left;
+            outline: none;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .bridge-info-content {
+            display: block;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+        }
+
+        .bridge-info-content.collapsed {
+            display: none;
+        }
+
         .adapt-helper-modal {
             position: fixed;
             top: 70px;
@@ -229,90 +258,15 @@
     `);
 
 
-    function createPreRCSection(title, question, requiresDetailsOnYes = false) {
-        const section = document.createElement('div');
-        section.className = 'pre-rc-section';
-        section.innerHTML = `
-            <div class="section-title">
-                ${title}
-                <span class="checkmark" style="display: none;">✓</span>
-            </div>
-            <div class="summary-container">
-                <div class="section-summary"></div>
-                <button type="button" class="edit-button" style="display: none;">Edit</button>
-            </div>
-            <div class="section-content">
-                <div class="question-text">${question}</div>
-                <div class="radio-group">
-                    <input type="radio" name="${title.replace(/\s/g, '')}" value="yes" id="${title.replace(/\s/g, '')}-yes">
-                    <label for="${title.replace(/\s/g, '')}-yes">Yes</label>
-                    <input type="radio" name="${title.replace(/\s/g, '')}" value="no" id="${title.replace(/\s/g, '')}-no">
-                    <label for="${title.replace(/\s/g, '')}-no">No</label>
-                </div>
-                <div class="details-input" style="display: none;">
-                    <textarea placeholder="Provide details..." required></textarea>
-                    <button type="button" class="confirm-button" style="display: none;">Confirm</button>
-                </div>
-            </div>
-        `;
-
-
-        // Add radio button listeners
-        section.querySelectorAll('input[type="radio"]').forEach(radio => {
-            radio.addEventListener('change', (e) => {
-                const detailsInput = section.querySelector('.details-input');
-                const textarea = detailsInput.querySelector('textarea');
-                const confirmButton = detailsInput.querySelector('.confirm-button');
-                const isMechanicalIssues = title === 'Mechanical Issues';
-
-                if ((isMechanicalIssues && e.target.value === 'yes') ||
-                    (!isMechanicalIssues && e.target.value === 'no')) {
-                    detailsInput.style.display = 'block';
-                    textarea.required = true;
-                    textarea.value = ''; // Clear previous input
-                    confirmButton.style.display = 'none';
-
-                    // Show confirm button only if there's text
-                    textarea.addEventListener('input', () => {
-                        confirmButton.style.display = textarea.value.trim() ? 'block' : 'none';
-                    });
-                } else {
-                    detailsInput.style.display = 'none';
-                    textarea.required = false;
-                    updateSectionStatus(section, title, e.target.value);
-                }
-            });
-        });
-
-        // Add confirm button listener
-        const confirmButton = section.querySelector('.confirm-button');
-        confirmButton.addEventListener('click', () => {
-            const textarea = section.querySelector('textarea');
-            if (textarea.value.trim()) {
-                updateSectionStatus(section, title, section.querySelector('input[type="radio"]:checked').value);
+    function adjustModalSize() {
+        const modal = document.querySelector('.adapt-helper-modal');
+        if (modal) {
+            const viewportHeight = window.innerHeight;
+            const modalRect = modal.getBoundingClientRect();
+            if (modalRect.height > viewportHeight - 120) {
+                modal.style.height = `${viewportHeight - 120}px`;
             }
-        });
-
-        // Add edit button listener
-        const editButton = section.querySelector('.edit-button');
-    editButton.addEventListener('click', (e) => {
-        e.stopPropagation();
-        section.classList.remove('answered');
-        section.querySelector('.checkmark').style.display = 'none';
-        section.querySelector('.section-content').style.display = 'block';
-        section.querySelector('.section-summary').style.display = 'none';
-        editButton.style.display = 'none';
-
-        // Restore the previous radio selection
-        const previousValue = section.querySelector('input[type="radio"]:checked').value;
-        if ((title === 'Mechanical Issues' && previousValue === 'yes') ||
-            (title !== 'Mechanical Issues' && previousValue === 'no')) {
-            section.querySelector('.details-input').style.display = 'block';
         }
-        adjustModalSize();
-        });
-
-        return section;
     }
 
     function updateSectionStatus(section, title, response) {
@@ -343,7 +297,85 @@
         adjustModalSize();
     }
 
-    // Rest of your existing functions remain the same until createRootCauseSection
+    function createPreRCSection(title, question, requiresDetailsOnYes = false) {
+        const section = document.createElement('div');
+        section.className = 'pre-rc-section';
+        section.innerHTML = `
+            <div class="section-title">
+                ${title}
+                <span class="checkmark" style="display: none;">✓</span>
+            </div>
+            <div class="summary-container">
+                <div class="section-summary"></div>
+                <button type="button" class="edit-button" style="display: none;">Edit</button>
+            </div>
+            <div class="section-content">
+                <div class="question-text">${question}</div>
+                <div class="radio-group">
+                    <input type="radio" name="${title.replace(/\s/g, '')}" value="yes" id="${title.replace(/\s/g, '')}-yes">
+                    <label for="${title.replace(/\s/g, '')}-yes">Yes</label>
+                    <input type="radio" name="${title.replace(/\s/g, '')}" value="no" id="${title.replace(/\s/g, '')}-no">
+                    <label for="${title.replace(/\s/g, '')}-no">No</label>
+                </div>
+                <div class="details-input" style="display: none;">
+                    <textarea placeholder="Provide details..." required></textarea>
+                    <button type="button" class="confirm-button" style="display: none;">Confirm</button>
+                </div>
+            </div>
+        `;
+
+        section.querySelectorAll('input[type="radio"]').forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                const detailsInput = section.querySelector('.details-input');
+                const textarea = detailsInput.querySelector('textarea');
+                const confirmButton = detailsInput.querySelector('.confirm-button');
+                const isMechanicalIssues = title === 'Mechanical Issues';
+
+                if ((isMechanicalIssues && e.target.value === 'yes') ||
+                    (!isMechanicalIssues && e.target.va.value === 'no')) {
+                    detailsInput.style.display = 'block';
+                    textarea.required = true;
+                    textarea.value = '';
+                    confirmButton.style.display = 'none';
+
+                    textarea.addEventListener('input', () => {
+                        confirmButton.style.display = textarea.value.trim() ? 'block' : 'none';
+                    });
+                } else {
+                    detailsInput.style.display = 'none';
+                    textarea.required = false;
+                    updateSectionStatus(section, title, e.target.value);
+                }
+            });
+        });
+
+        const confirmButton = section.querySelector('.confirm-button');
+        confirmButton.addEventListener('click', () => {
+            const textarea = section.querySelector('textarea');
+            if (textarea.value.trim()) {
+                updateSectionStatus(section, title, section.querySelector('input[type="radio"]:checked').value);
+            }
+        });
+
+        const editButton = section.querySelector('.edit-button');
+        editButton.addEventListener('click', (e) => {
+            e.stopPropagation();
+            sectiotion.classList.remove('answered');
+            section.querySelector('.checkmark').style.display = 'none';
+            section.querySelector('.section-content').style.display = 'block';
+            section.querySelector('.section-summary').style.display = 'none';
+            editButton.style.display = 'none';
+
+            const previousValue = section.querySelector('input[type="radio"]:chechecked').value;
+            if ((title === 'Mechanical Issues' && previousValue === 'yes') ||
+                (title !== 'Mechanical Issues' && previousValue === 'no')) {
+                section.querySelector('.details-input').style.display = 'block';
+            }
+            adjustModalSize();
+        });
+
+        return section;
+    }
 
     function createRootCauseSection(number) {
         const section = document.createElement('div');
@@ -403,57 +435,50 @@
         return action;
     }
 
-   function formatBridgeOutput(formData) {
-    const sections = {
-        problemStatement: '',
-        firstResponse: '',
-        rootCauses: ''
-    };
+    function formatBridgeOutput(formData) {
+        const sections = {
+            problemStatement: '',
+            firstResponse: '',
+            rootCauses: ''
+        };
 
-    // Format problem statement
-    const problems = [];
-    Object.entries(formData.preRC).forEach(([title, data]) => {
-        const cleanTitle = title.split('\n')[0].trim();
+        const problems = [];
+        Object.entries(formData.preRC).forEach(([title, data]) => {
+            const cleanTitle = title.split('\n')[0].trim();
 
-        if (cleanTitle === 'Mechanical Issues') {
-            if (data.response === 'yes') {
-                problems.push(`Mechanical Issues: X Issues found - ${data.details}`);
+            if (cleanTitle === 'Mechanical Issues') {
+                if (data.response === 'yes') {
+                    problems.push(`Mechanical Issues: X Issues found - ${data.details}`);
+                } else {
+                    problems.push(`Mechanical Issues: ✓ No MHE Constraint`);
+                }
+            } else if (cleanTitle === 'Sorter Health') {
+                if (data.response === 'yes') {
+                    problems.push(`Sorter Health: ✓ No Sorter Health constraint`);
+                } else {
+                    problems.push(`Sorter Health: X ${data.details}`);
+                }
             } else {
-                problems.push(`Mechanical Issues: ✓ No MHE Constraint`);
+                if (data.response === 'yes') {
+                    problems.push(`${cleanTitle}: ✓ Process followed and relevant actions taken`);
+                } else {
+                    problems.push(`${cleanTitle}: X ${data.details}`);
+                }
             }
-        } else if (cleanTitle === 'Sorter Health') {
-            if (data.response === 'yes') {
-                problems.push(`Sorter Health: ✓ No Sorter Health constraint`);
-            } else {
-                problems.push(`Sorter Health: X ${data.details}`);
-            }
-        } else {
-            // For all other questions (first 5)
-            if (data.response === 'yes') {
-                problems.push(`${cleanTitle}: ✓ Process followed and relevant actions taken`);
-            } else {
-                problems.push(`${cleanTitle}: X ${data.details}`);
-            }
-        }
-    });
+        });
 
-    sections.problemStatement = problems.join('\n');
+        sections.problemStatement = problems.join('\n');
+        sections.firstResponse = formData.correctiveActions.map((action, index) =>
+            `${index + 1}. ${action}`
+        ).join('\n');
+        sections.rootCauses = formData.rootCauses.map((rc, index) =>
+            `Root Cause ${index + 1}:\n${rc.cause}\n` +
+            `Controllability: ${rc.controllability === 'fc' ? 'FC Controllable' : 'Non-FC Controllable'}\n` +
+            `Units Impacted: ${rc.units}`
+        ).join('\n\n');
 
-    // Format first response
-    sections.firstResponse = formData.correctiveActions.map((action, index) =>
-        `${index + 1}. ${action}`
-    ).join('\n');
-
-    // Format root causes
-    sections.rootCauses = formData.rootCauses.map((rc, index) =>
-        `Root Cause ${index + 1}:\n${rc.cause}\n` +
-        `Controllability: ${rc.controllability === 'fc' ? 'FC Controllable' : 'Non-FC Controllable'}\n` +
-        `Units Impacted: ${rc.units}`
-    ).join('\n\n');
-
-    return sections;
-}
-
+        return sections;
+    }
 
     function createHelperWindow() {
         const modal = document.createElement('div');
@@ -462,13 +487,29 @@
             <span class="adapt-helper-close" style="cursor: pointer; float: right;">×</span>
             <h2>Bridge Helper</h2>
             <form class="adapt-helper-form">
-                <div class="pre-rc-sections"></div>
-                <div class="root-causes-container"></div>
-                <button type="button" class="add-button" id="add-root-cause">+ Add Root Cause</button>
+                <button type="button" class="bridge-info-collapsible">
+                    Bridge Information
+                    <span class="collapse-icon">▼</span>
+                </button>
+                <div class="bridge-info-content">
+                    <div class="pre-rc-sections"></div>
+                    <div class="root-causes-container"></div>
+                    <button type="button" class="add-button" id="add-root-cause">+ Add Root Cause</button>
+                </div>
                 <button type="button" class="generate-bridge-button">Generate Bridge</button>
                 <div class="bridge-output" style="display: none;"></div>
             </form>
         `;
+
+        // Add collapsible functionality
+        const collapsible = modal.querySelector('.bridge-info-collapsible');
+        const content = modal.querySelector('.bridge-info-content');
+        const collapseIcon = collapsible.querySelector('.collapse-icon');
+
+        collapsible.addEventListener('click', () => {
+            content.classList.toggle('collapsed');
+            collapseIcon.textContent = content.classList.contains('collapsed') ? '▼' : '▲';
+        });
 
         // Add pre-RC sections
         const preRCContainer = modal.querySelector('.pre-rc-sections');
@@ -495,6 +536,13 @@
         // Generate Bridge button handler
         modal.querySelector('.generate-bridge-button').addEventListener('click', (e) => {
             e.preventDefault();
+
+            // Collapse the bridge information content
+            const bridgeInfoContent = modal.querySelector('.bridge-info-content');
+            bridgeInfoContent.classList.add('collapsed');
+            const collapseIcon = modal.querySelector('.collapse-icon');
+            collapseIcon.textContent = '▼';
+
             const formData = {
                 preRC: {},
                 rootCauses: [],
@@ -522,7 +570,6 @@
                         units: section.querySelector('.units-input').value
                     });
 
-                    // Gather corrective actions for this root cause
                     section.querySelectorAll('.corrective-action textarea').forEach(textarea => {
                         if (textarea.value.trim()) {
                             formData.correctiveActions.push(textarea.value.trim());
@@ -569,44 +616,6 @@
             });
 
             outputDiv.style.display = 'block';
-                    // After generating the bridge, collapse the root cause sections
-        modal.querySelectorAll('.root-cause-section').forEach(section => {
-            const sectionContent = section.querySelector('.rc-textarea').parentElement;
-            const title = section.querySelector('.section-title');
-
-            // Create summary of the root cause
-            const summary = document.createElement('div');
-            summary.className = 'section-summary';
-            summary.style.display = 'none';
-
-            // Create edit button
-            const editButton = document.createElement('button');
-            editButton.className = 'edit-button';
-            editButton.textContent = 'Edit';
-            editButton.style.display = 'none';
-
-            // Add to section
-            section.insertBefore(summary, sectionContent);
-            title.appendChild(editButton);
-
-            // Update summary and collapse
-            const rcText = section.querySelector('.rc-textarea').value;
-            if (rcText) {
-                summary.textContent = rcText.substring(0, 50) + (rcText.length > 50 ? '...' : '');
-                summary.style.display = 'block';
-                editButton.style.display = 'inline';
-                sectionContent.style.display = 'none';
-            }
-
-            // Add edit functionality
-            editButton.addEventListener('click', (e) => {
-                e.stopPropagation();
-                summary.style.display = 'none';
-                editButton.style.display = 'none';
-                sectionContent.style.display = 'block';
-            });
-        });
-
         });
 
         modal.querySelector('.adapt-helper-close').addEventListener('click', () => modal.remove());
@@ -614,6 +623,7 @@
         return modal;
     }
 
+    // Create floating button
     function createFloatingButton() {
         const button = document.createElement('button');
         button.id = 'bridge-helper-float';
@@ -630,33 +640,31 @@
     }
 
     // Initialize
-    function initialize() {
+    function init() {
+        console.log('Initializing Bridge Helper');
         const existingButton = document.getElementById('bridge-helper-float');
         if (existingButton) {
+            console.log('Removing existing button');
             existingButton.remove();
         }
+        console.log('Creating new button');
         createFloatingButton();
+        console.log('Button should be created');
     }
 
-    // Initial load
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initialize);
-    } else {
-        initialize();
-    }
+    // Run initialization
+    init();
 
-    // Handle URL changes
+    // Re-run initialization when URL changes
     let lastUrl = location.href;
     new MutationObserver(() => {
         const url = location.href;
         if (url !== lastUrl) {
             lastUrl = url;
-            initialize();
+            init();
         }
     }).observe(document, {subtree: true, childList: true});
 
-    // Handle history changes
-    window.addEventListener('popstate', initialize);
-    window.addEventListener('pushState', initialize);
-    window.addEventListener('replaceState', initialize);
 })();
+
+
