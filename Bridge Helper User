@@ -453,17 +453,17 @@
                     if (data.response === 'yes') {
                         issues.push(`Mechanical Issues: X Issues found - ${data.details}`);
                     } else {
-                        problems.push(`Mechanical Issues: ✓ No MHE Constraint`);
+                        problems.push(`Mechanical Issues: ✓`);
                     }
                 } else if (cleanTitle === 'Sorter Health') {
                     if (data.response === 'yes') {
-                        problems.push(`Sorter Health: ✓ No Sorter Health constraint`);
+                        problems.push(`Sorter Health: ✓`);
                     } else {
                         issues.push(`Sorter Health: X ${data.details}`);
                     }
                 } else {
                     if (data.response === 'yes') {
-                        problems.push(`${cleanTitle}: ✓ Process followed and relevant actions taken`);
+                        problems.push(`${cleanTitle}: ✓`);
                     } else {
                         issues.push(`${cleanTitle}: X ${data.details}`);
                     }
