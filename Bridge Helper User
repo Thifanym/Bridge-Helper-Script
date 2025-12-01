@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Enhanced Bridge Helper
 // @namespace    http://tampermonkey.net/
-// @version      1.0.1
+// @version      1.0.2
 // @description  Bridge Helper with dynamic sections and formatted output
 // @author       @thifanym
 // @match        https://skynet.amazon.dev/*
@@ -478,7 +478,7 @@
         // Combine all sections with appropriate spacing
         sections.problemStatement = [
             // First, all positive/completed items
-            ...problems,
+            ...additionalInfo,
             // Then a blank line if there are issues
             ...(issues.length > 0 ? [''] : []),
             // Then all issues/problems
@@ -486,7 +486,7 @@
             // Then a blank line if there's additional info
             ...(additionalInfo.length > 0 ? [''] : []),
             // Finally, the additional information
-            ...additionalInfo
+            ...problems
         ].join('\n');
 
         sections.firstResponse = formData.correctiveActions.map((action, index) =>
