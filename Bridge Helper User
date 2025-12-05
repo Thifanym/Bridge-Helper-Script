@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Enhanced Bridge Helper
 // @namespace    http://tampermonkey.net/
-// @version      1.0.4
+// @version      1.0.5
 // @description  Bridge Helper with dynamic sections and formatted output
 // @author       @thifanym
 // @match        https://skynet.amazon.dev/*
@@ -448,12 +448,12 @@
             const cleanTitle = title.split('\n')[0].trim();
 
             // Handle the first 7 questions
-            if (['Lagrange/TRB', 'Safe Cancel', 'Dwells', 'C7 Monitoring', 'C15 Threshold', 'Sorter Health', 'Mechanical Issues'].includes(cleanTitle)) {
+            if (['Lagrange/TRB', 'Safe Cancel', 'Dwells', 'C7 Monitoring', 'C15 Threshold', 'Sorter Health', 'Buffer in Target', 'Mechanical Issues'].includes(cleanTitle)) {
                 if (cleanTitle === 'Mechanical Issues') {
                     if (data.response === 'No') {
                         issues.push(`Mechanical Issues: X Issues found - ${data.details}`);
                     } else {
-                        problems.push(`Mechanical Issues: ✓`);
+                        problems.push(`Mechanical Issues: None`);
                     }
                 } else if (cleanTitle === 'Sorter Health') {
                     if (data.response === 'yes') {
