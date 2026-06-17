@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Enhanced Bridge Helper
 // @namespace    http://tampermonkey.net/
-// @version      1.0.6
+// @version      1.0.7
 // @description  Bridge Helper with dynamic sections and formatted output
 // @author       @thifanym
 // @match        https://skynet.amazon.dev/*
@@ -15,49 +15,45 @@
     'use strict';
 
     GM_addStyle(`
-        /* New styles for collapsible bridge information */
-        .bridge-info-collapsible {
-            background-color: #00A8E1;
-            color: white;
-            cursor: pointer;
-            padding: 10px 15px;
-            width: 100%;
-            border: none;
-            text-align: left;
-            outline: none;
-            font-size: 16px;
-            font-weight: bold;
-            border-radius: 4px;
-            margin-bottom: 10px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .bridge-info-content {
-            display: block;
-            overflow: hidden;
-            transition: max-height 0.3s ease-out;
-        }
-
-        .bridge-info-content.collapsed {
-            display: none;
-        }
-
-        .adapt-helper-modal {
+        .adapt-helper-modal, .adapt-content-modal {
             position: fixed;
-            top: 70px;
+            top: 50px;
             right: 20px;
             background: white;
             padding: 20px;
             border-radius: 8px;
             box-shadow: 0 0 10px rgba(0,0,0,0.3);
-            z-index: 100000;
-            width: 800px;
+            z-index: 10000;
+            width: 400px;
             font-family: Arial, sans-serif;
-            max-height: calc(100vh - 120px);
+            max-height: calc(100vh - 100px);
             overflow-y: auto;
-            transition: all 0.3s ease;
+        }
+        .adapt-content-modal {
+            width: 600px;
+        }
+        .adapt-helper-title {
+            font-size: 18px;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        .adapt-helper-form {
+            display: grid;
+            gap: 10px;
+        }
+        .adapt-helper-form label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .adapt-helper-form input,
+        .adapt-helper-form select,
+        .adapt-helper-form textarea {
+            width: 100%;
+            padding: 6px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
         }
         .adapt-helper-button {
             background: #00A8E1;
@@ -67,670 +63,529 @@
             border-radius: 4px;
             cursor: pointer;
             font-weight: bold;
-            position: fixed;
-            top: 50px;
+        }
+        .adapt-helper-button:hover {
+            background: #0088B4;
+        }
+        .adapt-helper-close {
+            position: absolute;
             right: 10px;
-            z-index: 999999;
-        }
-        .pre-rc-section {
-            border: 1px solid #ddd;
-            padding: 15px;
-            margin-bottom: 15px;
-            border-radius: 4px;
-            background-color: #f9f9f9;
-            transition: all 0.3s ease;
-        }
-        .pre-rc-section.answered {
-            padding: 8px;
-            margin-bottom: 8px;
-        }
-        .pre-rc-section.answered .section-content {
-            display: none;
-        }
-        .pre-rc-section.answered .section-summary {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        .section-summary {
-            displsplay: none;
-            font-size: 0.9em;
-            color: #666;
-            flex: 1;
-        }
-        .summary-container {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            width: 100%;
-        }
-        .edit-button {
-            background: #00A8E1;
-            color: white;
-            border: none;
-            padding: 3px 8px;
-            border-radius: 4px;
+            top: 10px;
             cursor: pointer;
-            font-size: 12px;
-            margin-left: auto;
-        }
-        .edit-button:hover {
-            background: #0088B4;
-        }
-        .checkmark {
-            color: #4CAF50;
-            font-weight: bold;
-            margin-right: 5px;
-        }
-        .confirm-button {
-            background: #4CAF50;
-            color: white;
-            border: none;
-            padding: 5px 10px;
-            border-radius: 4px;
-            cursor: pointer;
-            margin-top: 5px;
-            display: none;
-        }
-        .section-title {
-            font-weight: bold;
-            margin-bottom: 10px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        .question-text {
-            font-size: 14px !important;
+            font-size: 20px;
             color: #666;
-            margin: 5px 0;
-            line-height: 1.4;
         }
-        .details-input {
+        .request-feature-icon {
+            position: absolute;
+            right: 40px;
+            top: 10px;
+            cursor: pointer;
+            font-size: 16px;
+            color: #666;
+        }
+        .warning-message {
+            color: red;
+            font-weight: bold;
             margin-top: 10px;
         }
-        .details-input textarea {
-            width: 100%;
-            min-height: 60px;
-            max-height: 150px;
-            padding: 8px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            resize: vertical;
-            font-family: Arial, sans-serif;
-            font-size: 14px;
-            line-height: 1.4;
-            margin-bottom: 5px;
-            box-sizing: border-box;
+        #adapt-helper-float {
+            position: fixed;
+            top: 40px;
+            right: 10px;
+            z-index: 9999;
         }
-        .root-cause-section {
-            border: 1px solid #ddd;
-            padding: 15px;
-            margin-bottom: 15px;
-            border-radius: 4px;
-            background-color: #f9f9f9;
-        }
-        .control-units-container {
-            display: flex;
-            gap: 10px;
-            margin-top: 10px;
-            width: 100%;
-        }
-        .add-button, .add-corrective-action {
-            background: #4CAF50;
-            color: #333333;
-            border: none;
-            padding: 5px 10px;
-            border-radius: 4px;
-            cursor: pointer;
-            margin: 5px 0;
-            font-weight: 500;
-        }
-        .add-corrective-action {
-            margin-top: 15px;
-        }
-        .remove-button,
-        .root-cause-section .remove-button,
-        .corrective-action .remove-button {
-            background: #e0e0e0;
-            color: #666;
-            border: none;
-            padding: 3px 8px;
-            border-radius: 15px;
-            cursor: pointer;
-            margin-left: 10px;
-            font-size: 12px;
-        }
-        .generate-bridge-button {
-            background: #00A8E1;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-weight: bold;
-            margin-top: 15px;
-            width: 100%;
-        }
-        .generate-bridge-button:hover {
-            background: #0088B4;
-        }
-        .bridge-output {
-            margin-top: 20px;
-            padding: 15px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-        }
-        .bridge-section {
-            margin-bottom: 20px;
-            padding: 15px;
-            background-color: #f8f9fa;
-            border-radius: 4px;
-        }
-        .bridge-section-title {
-            font-weight: bold;
-            margin-bottom: 10px;
-            padding-bottom: 5px;
-            border-bottom: 2px solid #00A8E1;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .bridge-section-content {
+        .generated-content {
             white-space: pre-wrap;
-            font-family: Arial, sans-serif;
-            font-size: 14px;
-            line-height: 1.6;
-        }
-        .copy-button {
-            background: #00A8E1;
-            color: white;
-            border: none;
-            padding: 5px 10px;
+            font-family: monospace;
+            background: #f0f0f0;
+            padding: 10px;
             border-radius: 4px;
-            cursor: pointer;
-        }
-        .root-cause-section textarea,
-        .corrective-action textarea {
-            width: 100%;
-            box-sizing: border-box;
-            min-height: 60px;
-            padding: 8px;
             margin-bottom: 10px;
         }
     `);
 
-    function adjustModalSize() {
-        const modal = document.querySelector('.adapt-helper-modal');
-        if (modal) {
-            const viewportHeight = window.innerHeight;
-            const modalRect = modal.getBoundingClientRect();
-            if (modalRect.height > viewportHeight - 120) {
-                modal.style.height = `${viewportHeight - 120}px`;
-            }
+    const BEHAVIOUR_CATEGORIES = {
+        behavioural: [
+                       "Break timing violations",
+            "Cherry picking",
+            "Clock-in/out timing violations",
+            "Dress code/grooming violations",
+            "Food/beverage on work floor",
+            "Inappropriate language/communication",
+            "Insubordination/refusal to work",
+            "Mobile phone/headphone usage",
+            "Overfilled totes",
+            "Refusal to show badge",
+            "Standard Work",
+            "Thank you!",
+            "Non-Productive Time",
+            "Unpaid break clock-out failures",
+            "Working time violations",
+            "Workstation cleanliness"
+
+        ],
+        safety: [
+            "Mobile phone use whilst operating equipment",
+            "PIT/Tug violations",
+            "TDR policy breaches",
+            "Not wearing PPE in restricted zone",
+            "Serious safety breaches"
+        ]
+    };
+
+    const LOCATIONS = [
+        "AFE",
+        "Pack Singles",
+        "PCNS",
+        "Pick",
+        "P2R",
+        "Stow",
+        "Receive",
+        "ICQA",
+        "IB Dock",
+        "Ship Dock",
+        "Outside of permitted areas",
+        "Other (specify)"
+    ];
+
+    const FEEDBACK_LEVELS = [
+        "Supportive Conversation",
+        "Conversation",
+        "Counselling",
+        "First Written Conversation",
+        "Second Written Conversation",
+        "Final Written Conversation",
+        "Documented Positive",
+        "Feedback"
+    ];
+
+    const ESCALATED_BEHAVIOURS = [
+        "Inappropriate language/communication",
+        "Insubordination/refusal to work",
+        "Serious safety breaches"
+    ];
+
+    const ADAPT_TEMPLATES = {
+        "Mobile phone/headphone usage": {
+            template: (data) => ({
+                details: `Misconduct: Unreasonable and / or unauthorised use of mobile phones
+STU completed by: ${data.stuHeldBy}
+
+On ${data.date} at ${data.time}, you were observed using your mobile phone in ${data.location}. ${data.incidentDetails ? `Specifically, ${data.incidentDetails}. ` : ''}Mobile phone use in working areas can create safety hazards and may also risk exposure of confidential, customer, proprietary, or other sensitive business information.
+
+Based on the discussion held by ${data.stuHeldBy}, you stated that ${data.aaSTU}. This is a violation of our Mobile Phone Policy and you are receiving this ${data.feedbackLevel}.`,
+                improvement: `Areas of Improvement:
+Safety is our top priority and must remain at the forefront of everything you do. As stated in the Mobile Phone Policy, Category Two offenses are considered serious and generally result in progressive discipline. Infractions may include:
+(1) Mobile phone use while performing work tasks and walking
+(2) Use of earbuds or headphones
+(3) Use of a mobile phone to play games, music, videos, etc. outside of approved break areas
+
+Moving forward, you must ensure that you are following Amazon's Mobile Phone Policy. Future instances of violations may result in further corrective action, up to and including termination of employment.`
+            })
+        },
+        "Standard Work": {
+            template: (data) => ({
+                details: `Misconduct: Failure to follow standard work practices
+
+On ${data.date}, you failed to follow appropriate standard work practices. ${data.incidentDetails ? `Specifically, ${data.incidentDetails}. ` : ''}${data.stuHeldBy} held a seek to understand conversation with you. You identified barriers including ${data.aaSTU}.`,
+                improvement: `As detailed above, you have failed to meet Amazon's Standards of Conduct and behavioural expectations. Amazon expects associates to adhere to standard operating procedures with regards to processing orders in each function within the FC. Failure to adhere to standard work guidelines includes, but is not limited to, any action that artificially inflates an individual's rate (i.e. double-scanning, machine-gunning), dishonest behaviour or discriminatory work selection that directly or indirectly hinders others' performance (i.e. cherry picking), knowingly causing a virtual/physical mismatch, or circumventing critical steps in the process/PMV. Failure to meet these expectations and/or future violations of these guidelines may result in additional discipline, up to and including termination.`
+            })
+        },
+        "Refusal to show badge": {
+            template: (data) => ({
+                details: `Misconduct: Refusal to show badge
+
+On ${data.date}, you refused to show your badge when requested in ${data.location}. ${data.incidentDetails ? `Specifically, ${data.incidentDetails}. ` : ''}${data.stuHeldBy} held a seek to understand conversation with you. You identified barriers including ${data.aaSTU}. All associates are required to visibly display their badge at all times while on site for security and identification purposes. Based on the discussion, you did not provide reasonable mitigations for your behaviour and therefore you are receiving this ${data.feedbackLevel}.`,
+                improvement: `Amazon requires all associates to wear and display their badge visibly at all times while on site. Your badge is essential for security, identification, and ensuring a safe working environment for everyone. Refusal to show your badge when requested by a member of the leadership or security team is a violation of Amazon's Standards of Conduct. Future instances of this behaviour may result in further corrective action, up to and including termination of employment.`
+            })
+        },
+        "Unpaid break clock-out failures": {
+            template: (data) => ({
+                details: `Misconduct: Unpaid break clock-out failure
+
+On ${data.date}, you failed to clock out for your unpaid break. ${data.incidentDetails ? `Specifically, ${data.incidentDetails}. ` : ''}${data.stuHeldBy} held a seek to understand conversation with you. You identified barriers including ${data.aaSTU}. It is your responsibility to clock out at the start of your unpaid break and clock back in at the end. Failure to do so is a violation of Amazon's attendance and timekeeping policy, and therefore you are receiving this ${data.feedbackLevel}.`,
+                improvement: `You are required to accurately record your working time by clocking out at the start of your unpaid break and clocking back in when your break ends. Failure to clock out for unpaid breaks results in inaccurate time records and may be considered a breach of Amazon's Standards of Conduct. Going forward, you must ensure you clock out and back in for all unpaid breaks. Further instances of clock-out failures may result in additional corrective action, up to and including termination of employment.`
+            })
+        },
+        "Non-Productive Time": {
+            template: (data) => ({
+                details: `Misconduct: Non-Productive Time
+
+On ${data.date}, you had a total of ${data.idleTime} minutes of unknown idle time. ${data.incidentDetails ? `Specifically, ${data.incidentDetails}. ` : ''}${data.stuHeldBy} held a seek to understand conversation with you to follow up on the reason(s) for this non-productive time. You identified barriers including ${data.aaSTU}. Based on your explanation, the manager validated that during this time, you were not actively engaged in a work process for reasons within your control. This behaviour violates Amazon's Standards of Conduct, and therefore you are receiving this ${data.feedbackLevel}.`,
+                improvement: `To work together successfully as a team, we need your partnership. As an Amazon employee, we expect you to come to work and give your best effort each day. This means working safely, following standard work, positively contributing to the team, staying actively engaged in your assigned task, communicating barriers, and requesting additional training or support when you need it. Amazon expects you to remain productive during your scheduled shift. In the event you are logged off software tools for a prolonged time, notify a manager so they can assist in addressing any job-related barriers. Further incidents of idle time within your control will lead to additional discipline, up to and including termination of employment.`
+            })
+        },
+        "Break timing violations": {
+            template: (data) => ({
+                details: `Misconduct: Extended break/Break timing violations
+
+On ${data.date}, you had an extended ${data.breakNumber} break on shift. Your break lasted ${data.breakTime} minutes. ${data.incidentDetails ? `Specifically, ${data.incidentDetails}. ` : ''}During STU conversation with ${data.stuHeldBy}, you identified barriers including ${data.aaSTU}. It is important to remain productive at Amazon by leaving for and returning from breaks at the correct time. Based on the discussion, you did not provide reasonable mitigations and therefore you are receiving this ${data.feedbackLevel}.`,
+                improvement: `Going forward, you are expected to leave and come back from breaks and lunches on time and remain on task while performing any function. You are required to remain productive during your scheduled shift which includes leaving your work area at your assigned break/lunch start time and arriving back in your work area ready to work by the end of your break/lunch end time. If you have any barriers or concerns please notify your Leadership immediately. Further incidents of unproductive time may lead to further corrective action up to and including termination of employment.`
+            })
+        },
+        "Food/beverage on work floor": {
+            template: (data) => ({
+                details: `Misconduct: Food/Beverage on Shop Floor
+
+On ${data.date}, you were observed with food/drink while on the FC floor. ${data.incidentDetails ? `Specifically, ${data.incidentDetails}. ` : ''}A seek to understand conversation took place with ${data.stuHeldBy} and yourself on ${data.date} to which you stated ${data.aaSTU}. Water is the only food or beverage allowed on the FC floor. Having food or drink (besides water) on the FC floor is considered a violation of the Standards of Conduct, specifically "Creating or contributing to disorderly or unsanitary conditions.". You are therefore receiving this ${data.feedbackLevel}. `,
+                improvement: `Moving forward, you are only permitted to have clear water in a clear bottle with a secured top on the floor. Future violations of Amazon's Standards of Conduct will result in further corrective action, up to and including termination.`
+            })
+        },
+        "Cherry picking": {
+            template: (data) => ({
+                details: `Misconduct: Cherry Picking
+
+On ${data.date}, you were observed cherry picking while performing work in ${data.location}. ${data.incidentDetails ? `Specifically, ${data.incidentDetails}. ` : ''}A seek to understand conversation with ${data.stuHeldBy} took place with you to which you stated ${data.aaSTU}. Cherry picking is against standard work and creates an unfair condition for other associates. You were informed of expectations going forward and notified of this ${data.feedbackLevel}.`,
+                improvement: `As detailed above, you have failed to meet Amazon's Standards of Conduct and behavioural expectations. Amazon expects associates to adhere to standard operating procedures with regards to processing orders in each function within the FC. Failure to adhere to standard work guidelines includes, but is not limited to, any action which artificially inflates an individual's rate (i.e. double-scanning, machine-gunning), dishonest behaviour or discriminatory work selection which directly or indirectly hinders others' performance (i.e. cherry picking), knowingly causing a virtual/physical mismatch, or circumventing critical steps in the process. Failure to meet these expectations and/or future violations of these guidelines may result in additional discipline, up to and including termination.`
+            })
+        },
+        "Dress code/grooming violations": {
+            template: (data) => ({
+                details: `Misconduct: Dress code/grooming violations
+
+On ${data.date}, you reported to work in violation of Amazon's Dress and Grooming Standards Policy. ${data.incidentDetails ? `Specifically, ${data.incidentDetails}. ` : ''}A seek to understand conversation with ${data.stuHeldBy} took place with you to which you stated ${data.aaSTU}. Amazon encourages Associates to wear casual and comfortable clothing, however, not all casual and comfortable clothing is appropriate or safe in our building. You are being addressed due to the safety risk to yourself and/or other associates created by violation of the Amazon Dress Code. You are therefore receiving this ${data.feedbackLevel}.`,
+                improvement: `Immediate improvement and adherence to the Amazon's Dress and Grooming policy is required. Repeated violations of this policy will result in further corrective discipline up to and including termination.`
+            })
+        },
+        "Working time violations": {
+            template: (data) => ({
+                details: `Misconduct: Working time violations
+
+On ${data.date}, you worked over 12/60 hours. ${data.incidentDetails ? `Specifically, ${data.incidentDetails}. ` : ''}Although your hard work is appreciated, there was no operational reason why you should have worked over 12/60 hours. A seek to understand conversation took place with you to which you stated ${data.aaSTU}. We value your health and safety, therefore it is important that you follow the overtime policy as outlined in the attendance policy. This is a violation of Amazon Working Hour Policy: No employee is to work more than 12 hours per day, 60 hours per work week, or 6 consecutive days in a row.`,
+                improvement: `Going forward, you are required to follow Amazon Policy. Associates will not be asked to, nor may they voluntarily, work more than 12 hours per day or more than 60 hours per week. You are responsible for managing your time so as not to exceed 12 hours worked per shift or 60 hours in a work week. If you believe there is a reason for you to work over the 12 hours, you should speak to your Leadership team. Violating Amazon's Working Hour Policy may result in further corrective action up to and including termination.`
+            })
+        },
+        "Inappropriate language/communication": {
+            template: (data) => ({
+                details: `Misconduct: Inappropriate language/communication
+
+On ${data.date}, you were observed using inappropriate language or communication. ${data.incidentDetails ? `Specifically, ${data.incidentDetails}. ` : ''}A seek to understand conversation with ${data.stuHeldBy} took place with you to which you stated ${data.aaSTU}. Based on the discussion, you did not provide reasonable mitigations for your behaviour and therefore you are receiving this ${data.feedbackLevel}.`,
+                improvement: `Amazon expects all associates to maintain professional and respectful communication at all times. Inappropriate language, gestures, or actions create a negative work environment and are not tolerated. Future instances of such behaviour may result in further corrective action, up to and including termination of employment.`
+            })
+        },
+        "Insubordination/refusal to work": {
+            template: (data) => ({
+                details: `Misconduct: Insubordination/refusal to work
+
+On ${data.date}, you demonstrated insubordination or refused to work as directed. ${data.incidentDetails ? `Specifically, ${data.incidentDetails}. ` : ''}A seek to understand conversation with ${data.stuHeldBy} took place with you to which you stated ${data.aaSTU}. Based on the discussion, you did not provide reasonable mitigations for your behaviour and therefore you are receiving this ${data.feedbackLevel}.`,
+                improvement: `Amazon expects all associates to follow reasonable instructions from their supervisors and to perform their assigned duties. Insubordination or refusal to work undermines team effectiveness and productivity. Future instances of such behaviour may result in further corrective action, up to and including termination of employment.`
+            })
+        },
+        "Mobile phone use whilst operating equipment": {
+            template: (data) => ({
+                details: `Misconduct: Mobile phone use whilst operating equipment
+
+On ${data.date}, you were observed using a mobile phone while operating equipment in ${data.location}. ${data.incidentDetails ? `Specifically, ${data.incidentDetails}. ` : ''}A seek to understand conversation with ${data.stuHeldBy} took place with you to which you stated ${data.aaSTU}.`,
+                improvement: `The use of mobile phones while operating equipment is strictly prohibited due to the serious safety risks it poses. This behaviour is a violation of Amazon's safety policies. Future violations of this nature will result in further disciplinary action, up to and including termination of employment.`
+            })
+        },
+        "PIT/Tug violations": {
+            template: (data) => ({
+                details: `Misconduct: PIT/Tug violations
+
+On ${data.date}, you were observed violating PIT/Tug safety procedures in ${data.location}. ${data.incidentDetails ? `Specifically, ${data.incidentDetails}. ` : ''}A seek to understand conversation with ${data.stuHeldBy} took place with you to which you stated ${data.aaSTU}.`,
+                improvement: `PIT/Tug safety procedures are critical for maintaining a safe work environment. Violations of these procedures put you and your colleagues at risk. Adherence to all safety protocols is mandatory. Future violations will result in further disciplinary action, up to and including termination of employment.`
+            })
+        },
+        "TDR policy breaches": {
+            template: (data) => ({
+                details: `Misconduct: TDR policy breaches
+
+On ${data.date}, you were observed breaching TDR (Trailer Dock and Release) policy in ${data.location}. ${data.incidentDetails ? `Specifically, ${data.incidentDetails}. ` : ''}A seek to understand conversation with ${data.stuHeldBy} took place with you to which you stated ${data.aaSTU}.`,
+                improvement: `TDR procedures are crucial for the safety of all associates and the integrity of our operations. Strict adherence to TDR policies is required at all times. Any future breaches of TDR policy will result in further disciplinary action, up to and including termination of employment.`
+            })
+        },
+        "Not wearing PPE in restricted zone": {
+            template: (data) => ({
+                details: `Misconduct: Not wearing PPE in restricted zone
+
+On ${data.date}, you were observed not wearing the required Personal Protective Equipment (PPE) in a restricted zone in ${data.location}. ${data.incidentDetails ? `Specifically, ${data.incidentDetails}. ` : ''}A seek to understand conversation with ${data.stuHeldBy} took place with you to which you stated ${data.aaSTU}.`,
+                improvement: `Wearing appropriate PPE in restricted zones is mandatory for your safety and the safety of others. Failure to do so is a serious violation of Amazon's safety policies. Future instances of not wearing required PPE will result in further disciplinary action, up to and including termination of employment.`
+            })
+        },
+        "Serious safety breaches": {
+            template: (data) => ({
+                details: `Misconduct: Serious safety breaches
+
+On ${data.date}, you were involved in a serious safety breach in ${data.location}. ${data.incidentDetails ? `Specifically, ${data.incidentDetails}. ` : ''}A seek to understand conversation with ${data.stuHeldBy} took place with you to which you stated ${data.aaSTU}.`,
+                improvement: `Safety is our top priority at Amazon. Serious safety breaches put you and your colleagues at significant risk and are not tolerated. This incident is a severe violation of our safety policies. Any future safety breaches of this nature will result in further disciplinary action, up to and including immediate termination of employment.`
+            })
+        },
+        "Overfilled totes": {
+            template: (data) => ({
+                details: `Misconduct: Overfilling totes
+
+On ${data.date}, it was found that you overfilled a tote while performing in ${data.location}. ${data.incidentDetails ? `Specifically, ${data.incidentDetails}. ` : ''}A STU was held with you by ${data.stuHeldBy}, to which you stated ${data.aaSTU}. It is important that you fill the tote only to its capacity and not overflow it with items, in order to ensure that we prevent risk of injuries, conveyor jams, or items falling from the tote. You were informed of expectations going forward and notified of this ${data.feedbackLevel}.`,
+                improvement: `Going forward, you are expected to follow all standard work guidelines to ensure efficient and fair work for all associates. Failure to comply with these expectations may result in additional disciplinary action up to and including termination.`
+            })
+        },
+        "Workstation cleanliness": {
+            template: (data) => ({
+                details: `Misconduct: Failure to maintain workstation cleanliness
+
+On ${data.date}, you failed to maintain your workstation according to Amazon's cleanliness standards in ${data.location}. ${data.incidentDetails ? `Specifically, ${data.incidentDetails}. ` : ''}A STU was held with you by ${data.stuHeldBy}, to which you stated ${data.aaSTU}. It is important that you keep your workstation clean. Maintaining clean workstations prevents safety hazards, improves operational efficiency, ensures the next associate can begin work immediately, and upholds our high standards for workplace conditions.
+
+As detailed above, you have failed to meet this expectation. This behavior violates Amazon's Standards of Conduct, and therefore you are receiving this ${data.feedbackLevel}.`,
+                improvement: `Going forward, you are expected to follow all standard work guidelines to ensure efficient and fair work for all associates. Failure to comply with these expectations may result in additional disciplinary action up to and including termination.`
+            })
+        },
+        "Clock-in/out timing violations": {
+            template: (data) => ({
+                details: `Misconduct: Early In/Late Out Violation (unapproved overtime)
+
+On ${data.date} at ${data.time}, you clocked in early/out late without prior approval in ${data.location}. ${data.incidentDetails ? `Specifically, ${data.incidentDetails}. ` : ''}During the seek to understand conversation with ${data.stuHeldBy}, you stated ${data.aaSTU}. Overtime hours must be pre-approved by your manager prior to being worked. This is a violation of the Amazon Standards of Conduct policy and therefore you are receiving this ${data.feedbackLevel}.`,
+                improvement: `Associate commitment to completing assigned tasks is critical in order to be Earth's most customer-centric company. As owners, we count on you to help achieve this mission. Your customers and teammates count on you to remain on task and complete your assigned job duties. Failure to adhere to start times, shift end times, or break time policies will be addressed through performance management using coaching or corrective actions. It is important for you to understand that meeting task standards is a critical component of your job. Immediate improvement is expected. Further Standard of Conduct violations may result in corrective action, up to and including termination.`
+            })
+        },
+        "Thank you!": {
+            template: (data) => ({
+                details: `Thank you for your dedication!
+
+On ${data.date}, I was truly impressed by your work in ${data.location}. ${data.incidentDetails ? `You really stood out when you, ${data.incidentDetails}. ` : ''}${data.aaSTU}.`,
+                improvement: `I want to personally thank you for bringing such dedication to your role. Your performance reflects not just professionalism, but genuine care for our standards of excellence at Amazon.`
+            })
         }
-    }
+    };
 
-    function updateSectionStatus(section, title, response) {
-        const details = section.querySelector('.details-input textarea')?.value || '';
-        const checkmark = section.querySelector('.checkmark');
-        const summary = section.querySelector('.section-summary');
-        const editButton = section.querySelector('.edit-button');
-        const isMechanicalIssues = title === 'Mechanical Issues';
-
-        let summaryText = '';
-        if (response === 'yes') {
-            if (isMechanicalIssues && details) {
-                summaryText = `${title}: Issues found - ${details}`;
-            } else {
-                summaryText = `${title}: Confirmed`;
-            }
-        } else {
-            summaryText = `${title}: Not confirmed${details ? ` - ${details}` : ''}`;
-        }
-
-        summary.style.display = 'block';
-        summary.textContent = summaryText;
-        checkmark.style.display = 'inline';
-        editButton.style.display = 'inline';
-        section.classList.add('answered');
-        section.querySelector('.section-content').style.display = 'none';
-
-        adjustModalSize();
-    }
-
-        function createPreRCSection(title, question, requiresDetailsOnYes = false) {
-        const section = document.createElement('div');
-        section.className = 'pre-rc-section';
-        section.innerHTML = `
-            <div class="section-title">
-                ${title}
-                <span class="checkmark" style="display: none;">✓</span>
-            </div>
-            <div class="summary-container">
-                <div class="section-summary"></div>
-                <button type="button" class="edit-button" style="display: none;">Edit</button>
-            </div>
-            <div class="section-content">
-                <div class="question-text">${question}</div>
-                <div class="radio-group">
-                    <input type="radio" name="${title.replace(/\s/g, '')}" value="yes" id="${title.replace(/\s/g, '')}-yes">
-                    <label for="${title.replace(/\s/g, '')}-yes">Yes</label>
-                    <input type="radio" name="${title.replace(/\s/g, '')}" value="no" id="${title.replace(/\s/g, '')}-no">
-                    <label for="${title.replace(/\s/g, '')}-no">No</label>
-                </div>
-                <div class="details-input" style="display: none;">
-                    <textarea placeholder="Provide details..." required></textarea>
-                    <button type="button" class="confirm-button" style="display: none;">Confirm</button>
-                </div>
-            </div>
-        `;
-
-        section.querySelectorAll('input[type="radio"]').forEach(radio => {
-            radio.addEventListener('change', (e) => {
-                const detailsInput = section.querySelector('.details-input');
-                const textarea = detailsInput.querySelector('textarea');
-                const confirmButton = detailsInput.querySelector('.confirm-button');
-
-                if (e.target.value === 'no') {
-                    detailsInput.style.display = 'block';
-                    textarea.required = true;
-                    textarea.value = '';
-                    confirmButton.style.display = 'none';
-
-                    textarea.addEventListener('input', () => {
-                        confirmButton.style.display = textarea.value.trim() ? 'block' : 'none';
-                    });
-                } else {
-                    detailsInput.style.display = 'none';
-                    textarea.required = false;
-                    updateSectionStatus(section, title, e.target.value);
-                }
-            });
-        });
-
-        const confirmButton = section.querySelector('.confirm-button');
-        confirmButton.addEventListener('click', () => {
-            const textarea = section.querySelector('textarea');
-            if (textarea.value.trim()) {
-                updateSectionStatus(section, title, section.querySelector('input[type="radio"]:checked').value);
-            }
-        });
-
-        const editButton = section.querySelector('.edit-button');
-        editButton.addEventListener('click', (e) => {
-            e.stopPropagation();
-            section.classList.remove('answered');
-            section.querySelector('.checkmark').style.display = 'none';
-            section.querySelector('.section-content').style.display = 'block';
-            section.querySelector('.section-summary').style.display = 'none';
-            editButton.style.display = 'none';
-
-            const previousValue = section.querySelector('input[type="radio"]:checked').value;
-            if (previousValue === 'no') {
-                section.querySelector('.details-input').style.display = 'block';
-            }
-            adjustModalSize();
-        });
-
-        return section;
-    }
-
-    function createRootCauseSection(number) {
-        const section = document.createElement('div');
-        section.className = 'root-cause-section';
-        section.innerHTML = `
-            <div class="section-title">
-                Root Cause ${number}
-                <button type="button" class="remove-button">×</button>
-            </div>
-            <textarea class="rc-textarea" placeholder="Enter root cause details (5 whys analysis)..."></textarea>
-            <div class="control-units-container">
-                <select class="controllability-select">
-                    <option value="">Select controllability...</option>
-                    <option value="fc">FC Controllable</option>
-                    <option value="non-fc">Non-FC Controllable</option>
-                </select>
-                <input type="number" class="units-input" placeholder="Units" min="0">
-            </div>
-            <button type="button" class="add-button add-corrective-action">+ Add First Response</button>
-            <div class="corrective-actions-container"></div>
-        `;
-
-        section.querySelector('.remove-button').addEventListener('click', () => {
-            section.remove();
-            adjustModalSize();
-        });
-
-        section.querySelector('.add-corrective-action').addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            const container = section.querySelector('.corrective-actions-container');
-            container.appendChild(createCorrectiveAction(container.children.length + 1));
-            adjustModalSize();
-        });
-
-        return section;
-    }
-
-    function createCorrectiveAction(number) {
-        const action = document.createElement('div');
-        action.className = 'corrective-action';
-        action.innerHTML = `
-            <div class="section-title">
-                First Response ${number}
-                <button type="button" class="remove-button">×</button>
-            </div>
-            <textarea placeholder="Enter first response details..."></textarea>
-        `;
-
-        action.querySelector('.remove-button').addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            action.remove();
-            adjustModalSize();
-        });
-
-        return action;
-    }
-
-    function formatBridgeOutput(formData) {
-        const sections = {
-            problemStatement: '',
-            firstResponse: '',
-            rootCauses: ''
-        };
-
-        const problems = [];
-        const issues = [];
-        const additionalInfo = [];
-
-        Object.entries(formData.preRC).forEach(([title, data]) => {
-            const cleanTitle = title.split('\n')[0].trim();
-
-            // Handle the first 7 questions
-            if (['Lagrange/TRB', 'Safe Cancel', 'Dwells', 'C7 Monitoring', 'C15 Threshold', 'Sorter Health', 'Buffer in Target', 'Mechanical Issues'].includes(cleanTitle)) {
-                if (cleanTitle === 'Mechanical Issues') {
-                    if (data.response === 'No') {
-                        issues.push(`Mechanical Issues: X Issues found - ${data.details}`);
-                    } else {
-                        problems.push(`Mechanical Issues: None`);
-                    }
-                } else if (cleanTitle === 'Sorter Health') {
-                    if (data.response === 'yes') {
-                        problems.push(`Sorter Health: ✓`);
-                    } else {
-                        issues.push(`Sorter Health: X ${data.details}`);
-                    }
-                } else {
-                    if (data.response === 'yes') {
-                        problems.push(`${cleanTitle}: ✓`);
-                    } else {
-                        issues.push(`${cleanTitle}: X ${data.details}`);
-                    }
-                }
-            }
-            // Handle the additional questions
-            else if (['Late Slams Count', 'Impacted CPTs', 'Impacted PPs'].includes(cleanTitle)) {
-                additionalInfo.push(`${cleanTitle}: ${data.details}`);
-            }
-        });
-
-        // Combine all sections with appropriate spacing
-        sections.problemStatement = [
-            // First, all positive/completed items
-            ...additionalInfo,
-            // Then a blank line if there are issues
-            ...(issues.length > 0 ? [''] : []),
-            // Then all issues/problems
-            ...issues,
-            // Then a blank line if there's additional info
-            ...(additionalInfo.length > 0 ? [''] : []),
-            // Finally, the additional information
-            ...problems
-        ].join('\n');
-
-        sections.firstResponse = formData.correctiveActions.map((action, index) =>
-            `${index + 1}. ${action}`
-        ).join('\n');
-
-        sections.rootCauses = formData.rootCauses.map((rc, index) =>
-            `Root Cause ${index + 1}:\n${rc.cause}\n` +
-            `Controllability: ${rc.controllability === 'fc' ? 'FC Controllable' : 'Non-FC Controllable'}\n` +
-            `Units Impacted: ${rc.units}`
-        ).join('\n\n');
-
-        return sections;
-    }
-
-
-     function createHelperWindow() {
+        const createHelperWindow = () => {
         const modal = document.createElement('div');
         modal.className = 'adapt-helper-modal';
         modal.innerHTML = `
-            <span class="adapt-helper-close" style="cursor: pointer; float: right;">×</span>
-            <h2>Bridge Helper</h2>
+            <div class="adapt-helper-title">Log Incident</div>
+            <span class="adapt-helper-close">×</span>
+            <span class="request-feature-icon" title="Request Feature/Ask Question">⚙️</span>
             <form class="adapt-helper-form">
-                <button type="button" class="bridge-info-collapsible">
-                    Bridge Information
-                    <span class="collapse-icon">▼</span>
-                </button>
-                <div class="bridge-info-content">
-                    <div class="pre-rc-sections"></div>
-                    <div class="root-causes-container"></div>
-                    <button type="button" class="add-button" id="add-root-cause">+ Add Root Cause</button>
+                <div>
+                    <label>Date:</label>
+                    <input type="date" id="incident-date" required>
                 </div>
-                <button type="button" class="generate-bridge-button">Generate Bridge</button>
-                <div class="bridge-output" style="display: none;"></div>
+                <div>
+                    <label>Time:</label>
+                    <input type="time" id="incident-time" required>
+                </div>
+                <div>
+                    <label>Location:</label>
+                    <select id="incident-location" required>
+                        <option value="">Select location...</option>
+                        ${LOCATIONS.map(loc => `<option value="${loc}">${loc}</option>`).join('')}
+                    </select>
+                    <input type="text" id="custom-location" style="display:none;" placeholder="Specify location">
+                </div>
+                <div>
+                    <label>Category:</label>
+                    <select id="incident-category" required>
+                        <option value="">Select category...</option>
+                        <option value="behavioural">Behavioural</option>
+                        <option value="safety">Safety</option>
+                    </select>
+                </div>
+                <div>
+                    <label>Behaviour:</label>
+                    <select id="behaviour-select" required>
+                        <option value="">Select behaviour...</option>
+                    </select>
+                </div>
+                <div>
+                    <label>Feedback Level:</label>
+                    <select id="feedback-level" required>
+                        <option value="">Select feedback level...</option>
+                        ${FEEDBACK_LEVELS.map(level => `<option value="${level}">${level}</option>`).join('')}
+                    </select>
+                </div>
+                <div id="idle-time-input" style="display:none;">
+                    <label>Idle Time (minutes):</label>
+                    <input type="number" id="idle-time" min="0">
+                </div>
+                <div id="break-time-input" style="display:none;">
+                    <label>Break Time (minutes):</label>
+                    <input type="number" id="break-time" min="0">
+                    <label>Break Number:</label>
+                    <select id="break-number">
+                        <option value="">Select break...</option>
+                        <option value="first">First Break</option>
+                        <option value="second">Second Break</option>
+                    </select>
+                </div>
+                <div>
+                    <label>STU held by:</label>
+                    <input type="text" id="stu-held-by" required>
+                </div>
+                <div>
+                    <label>Incident details:</label>
+                    <input type="text" id="incident-details" placeholder="Optional">
+                </div>
+                <div>
+                    <label>AA STU:</label>
+                    <textarea id="aa-stu" rows="3" required></textarea>
+                </div>
+                <div id="warning-message" class="warning-message" style="display:none;"></div>
+                <button type="submit" class="adapt-helper-button">Generate ADAPT</button>
             </form>
         `;
+        return modal;
+    };
 
-        // Add pre-RC sections
-        const preRCContainer = modal.querySelector('.pre-rc-sections');
-        [
-            // Original questions
-            ['Lagrange/TRB', 'Did you achieve declared process path level capacity till CPT from the point of TRB trigger or FT SLA?'],
-            ['Safe Cancel', 'Did you execute safe cancellations for non RUSH shipments if NND risk was >100%?'],
-            ['Dwells', 'Dwells were clean?'],
-            ['C7 Monitoring', 'C7 have been monitored?'],
-            ['C15 Threshold', 'C15 were under threshold?'],
-            ['Sorter Health', 'Was Sorter recirc/health good or under 5%?'],
-            ['Buffer in Target', 'Was buffer in target range?'],
-            ['Mechanical Issues', 'Was MHE operating as expected - without constraint?', true],
+    const updateBehaviourOptions = (category) => {
+        const behaviourSelect = document.getElementById('behaviour-select');
+        behaviourSelect.innerHTML = '<option value="">Select behaviour...</option>';
 
-            // New questions (directly added without header)
-            ['Late Slams Count', 'How many late slams have been performed?', false, false, true],
-            ['Impacted CPTs', 'Which CPTs were they related to?', false, false, true],
-            ['Impacted PPs', 'Which PPs were impacting?', false, false, true]
-        ].forEach(([title, question, requiresDetailsOnYes, isHeader, isTextOnly]) => {
-            if (isTextOnly) {
-                // Create text-only input section
-                const section = createPreRCSection(title, question, false);
-                section.querySelector('.radio-group').remove();
-                const detailsInput = section.querySelector('.details-input');
-                detailsInput.style.display = 'block';
-                const textarea = detailsInput.querySelector('textarea');
-                textarea.required = true;
-
-                // Add confirm button functionality
-                const confirmButton = detailsInput.querySelector('.confirm-button');
-                textarea.addEventListener('input', () => {
-                    confirmButton.style.display = textarea.value.trim() ? 'block' : 'none';
-                });
-
-                confirmButton.addEventListener('click', () => {
-                    if (textarea.value.trim()) {
-                        const summary = section.querySelector('.section-summary');
-                        summary.textContent = `${title}: ${textarea.value.trim()}`;
-                        summary.style.display = 'block';
-                        section.querySelector('.checkmark').style.display = 'inline';
-                        section.querySelector('.edit-button').style.display = 'inline';
-                        section.classList.add('answered');
-                        section.querySelector('.section-content').style.display = 'none';
-                        adjustModalSize();
-                    }
-                });
-
-                preRCContainer.appendChild(section);
-            } else {
-                // Regular pre-RC section
-                preRCContainer.appendChild(createPreRCSection(title, question, requiresDetailsOnYes));
-            }
+        BEHAVIOUR_CATEGORIES[category].forEach(behaviour => {
+            const option = document.createElement('option');
+            option.value = behaviour;
+            option.textContent = behaviour;
+            behaviourSelect.appendChild(option);
         });
+    };
 
-        // Add Root Cause button handler
-        modal.querySelector('#add-root-cause').addEventListener('click', (e) => {
-            e.preventDefault();
-            const container = modal.querySelector('.root-causes-container');
-            container.appendChild(createRootCauseSection(container.children.length + 1));
-            adjustModalSize();
-        });
+    const generateAdaptContent = (data) => {
+        const template = ADAPT_TEMPLATES[data.behaviour];
+        if (template) {
+            return template.template(data);
+        } else {
+            return {
+                details: `No template available for ${data.behaviour}. Please manually enter the details.`,
+                improvement: 'No improvement area available.'
+            };
+        }
+    };
 
-                // Generate Bridge button handler
-        modal.querySelector('.generate-bridge-button').addEventListener('click', (e) => {
-            e.preventDefault();
-            const bridgeInfoContent = modal.querySelector('.bridge-info-content');
-            const collapseIcon = modal.querySelector('.collapse-icon');
+    const showGeneratedContent = (content) => {
+        const existingModal = document.querySelector('.adapt-content-modal');
+        if (existingModal) {
+            existingModal.remove();
+        }
 
-            // Instead of adding 'collapsed' class, just toggle visibility initially
-            bridgeInfoContent.style.display = 'none';
-            collapseIcon.textContent = '▼';
+        const modal = document.createElement('div');
+        modal.className = 'adapt-content-modal';
+        modal.innerHTML = `
+            <div class="adapt-helper-title">Generated ADAPT Content</div>
+            <span class="adapt-helper-close">×</span>
+            <h3>Detail of Incident</h3>
+            <div id="generated-content-details" class="generated-content">${content.details}</div>
+            <button class="adapt-helper-button" id="copy-details">Copy Details to Clipboard</button>
+            <h3>Area of Improvement</h3>
+            <div id="generated-content-improvement" class="generated-content">${content.improvement}</div>
+            <button class="adapt-helper-button" id="copy-improvement">Copy Improvement to Clipboard</button>
+        `;
+        document.body.appendChild(modal);
 
-            // Make the collapsible button still work after generating bridge
-            const collapsibleButton = modal.querySelector('.bridge-info-collapsible');
-            collapsibleButton.addEventListener('click', () => {
-                const isCollapsed = bridgeInfoContent.style.display === 'none';
-                bridgeInfoContent.style.display = isCollapsed ? 'block' : 'none';
-                collapseIcon.textContent = isCollapsed ? '▲' : '▼';
+        modal.querySelector('.adapt-helper-close').onclick = () => modal.remove();
+        modal.querySelector('#copy-details').onclick = () => {
+            navigator.clipboard.writeText(content.details).then(() => {
+                alert('Details copied to clipboard!');
+            }).catch(err => {
+                console.error('Failed to copy:', err);
             });
+        };
+        modal.querySelector('#copy-improvement').onclick = () => {
+            navigator.clipboard.writeText(content.improvement).then(() => {
+                alert('Improvement area copied to clipboard!');
+            }).catch(err => {
+                console.error('Failed to copy:', err);
+            });
+        };
+    };
 
+    const initializeHelper = () => {
+        const existingHelper = document.querySelector('.adapt-helper-modal');
+        if (existingHelper) {
+            existingHelper.remove();
+        }
+
+        const helper = createHelperWindow();
+        document.body.appendChild(helper);
+
+        const categorySelect = helper.querySelector('#incident-category');
+        const behaviourSelect = helper.querySelector('#behaviour-select');
+        const feedbackLevelSelect = helper.querySelector('#feedback-level');
+        const warningMessage = helper.querySelector('#warning-message');
+        const locationSelect = helper.querySelector('#incident-location');
+        const customLocationInput = helper.querySelector('#custom-location');
+        const idleTimeInput = helper.querySelector('#idle-time-input');
+        const breakTimeInput = helper.querySelector('#break-time-input');
+
+        helper.querySelector('.adapt-helper-close').onclick = () => helper.remove();
+
+        helper.querySelector('.request-feature-icon').onclick = () => {
+            const subject = encodeURIComponent('ADAPT Helper Feature Request/Question');
+            const body = encodeURIComponent('Feature Request/Question Details:\n\n');
+            window.location.href = `mailto:thifanym@amazon.co.uk?subject=${subject}&body=${body}`;
+        };
+
+        categorySelect.onchange = () => {
+            behaviourSelect.innerHTML = '<option value="">Select behaviour...</option>';
+            if (categorySelect.value) {
+                updateBehaviourOptions(categorySelect.value);
+            }
+        };
+
+        locationSelect.onchange = () => {
+            if (locationSelect.value === 'Other (specify)') {
+                customLocationInput.style.display = 'block';
+            } else {
+                customLocationInput.style.display = 'none';
+            }
+        };
+
+        behaviourSelect.onchange = () => {
+            if (ESCALATED_BEHAVIOURS.includes(behaviourSelect.value)) {
+                feedbackLevelSelect.value = 'First Written Conversation';
+                warningMessage.textContent = 'This behaviour may require escalation. Please contact HR.';
+                warningMessage.style.display = 'block';
+            } else {
+                warningMessage.style.display = 'none';
+            }
+
+            if (behaviourSelect.value === 'Non-Productive Time') {
+                idleTimeInput.style.display = 'block';
+                breakTimeInput.style.display = 'none';
+            } else if (behaviourSelect.value === 'Break timing violations') {
+                idleTimeInput.style.display = 'none';
+                breakTimeInput.style.display = 'block';
+            } else {
+                idleTimeInput.style.display = 'none';
+                breakTimeInput.style.display = 'none';
+            }
+        };
+
+        helper.querySelector('form').onsubmit = (e) => {
+            e.preventDefault();
             const formData = {
-                preRC: {},
-                rootCauses: [],
-                correctiveActions: []
+                date: document.getElementById('incident-date').value,
+                time: document.getElementById('incident-time').value,
+                location: locationSelect.value === 'Other (specify)' ? customLocationInput.value : locationSelect.value,
+                category: categorySelect.value,
+                behaviour: behaviourSelect.value,
+                feedbackLevel: feedbackLevelSelect.value,
+                aaSTU: document.getElementById('aa-stu').value,
+                stuHeldBy: document.getElementById('stu-held-by').value,
+                incidentDetails: document.getElementById('incident-details').value,
+                idleTime: document.getElementById('idle-time')?.value,
+                breakTime: document.getElementById('break-time')?.value,
+                breakNumber: document.getElementById('break-number')?.value
             };
 
-            // Gather pre-RC data
-            modal.querySelectorAll('.pre-rc-section').forEach(section => {
-                const title = section.querySelector('.section-title').textContent.trim();
-                const response = section.querySelector('input[type="radio"]:checked')?.value;
-                const details = section.querySelector('.details-input textarea')?.value || '';
-
-                if (response || details) {
-                    formData.preRC[title] = { response, details };
-                }
-            });
-
-            // Gather root causes and corrective actions
-            modal.querySelectorAll('.root-cause-section').forEach(section => {
-                const cause = section.querySelector('.rc-textarea').value.trim();
-                if (cause) {
-                    formData.rootCauses.push({
-                        cause,
-                        controllability: section.querySelector('.controllability-select').value,
-                        units: section.querySelector('.units-input').value
-                    });
-
-                    section.querySelectorAll('.corrective-action textarea').forEach(textarea => {
-                        if (textarea.value.trim()) {
-                            formData.correctiveActions.push(textarea.value.trim());
-                        }
-                    });
-                }
-            });
-
-            const sections = formatBridgeOutput(formData);
-            const outputDiv = modal.querySelector('.bridge-output');
-            outputDiv.innerHTML = `
-                <div class="bridge-section">
-                    <div class="bridge-section-title">
-                        Problem Statement
-                        <button type="button" class="copy-button">Copy</button>
-                    </div>
-                    <div class="bridge-section-content">${sections.problemStatement}</div>
-                </div>
-                <div class="bridge-section">
-                    <div class="bridge-section-title">
-                        First Response
-                        <button type="button" class="copy-button">Copy</button>
-                    </div>
-                    <div class="bridge-section-content">${sections.firstResponse}</div>
-                </div>
-                <div class="bridge-section">
-                    <div class="bridge-section-title">
-                        Root Causes
-                        <button type="button" class="copy-button">Copy</button>
-                    </div>
-                    <div class="bridge-section-content">${sections.rootCauses}</div>
-                </div>
-            `;
-
-            // Add regenerate button
-            const regenerateButton = document.createElement('button');
-            regenerateButton.className = 'generate-bridge-button';
-            regenerateButton.textContent = 'Regenerate Bridge';
-            regenerateButton.style.marginTop = '15px';
-            outputDiv.appendChild(regenerateButton);
-
-            // Add copy functionality
-            outputDiv.querySelectorAll('.copy-button').forEach(button => {
-                button.addEventListener('click', () => {
-                    const content = button.parentElement.nextElementSibling.textContent;
-                    navigator.clipboard.writeText(content);
-                    button.textContent = 'Copied!';
-                    setTimeout(() => button.textContent = 'Copy', 2000);
-                });
-            });
-
-            outputDiv.style.display = 'block';
-        });
-
-
-        modal.querySelector('.adapt-helper-close').addEventListener('click', () => modal.remove());
-
-        document.body.appendChild(modal);
-        return modal;
-    }
-
-    // Create floating button
-    function createFloatingButton() {
-        const button = document.createElement('button');
-        button.id = 'bridge-helper-float';
-        button.className = 'adapt-helper-button';
-        button.textContent = 'Bridge Helper';
-        button.onclick = () => {
-            const existingModal = document.querySelector('.adapt-helper-modal');
-            if (existingModal) {
-                existingModal.remove();
-            }
-            document.body.appendChild(createHelperWindow());
+            const content = generateAdaptContent(formData);
+            showGeneratedContent(content);
         };
+    };
+
+    const createFloatingButton = () => {
+        const button = document.createElement('button');
+        button.id = 'adapt-helper-float';
+        button.className = 'adapt-helper-button';
+        button.textContent = 'ADAPT Helper';
+        button.onclick = initializeHelper;
         document.body.appendChild(button);
-    }
+    };
 
-    // Initialize
-    function init() {
-        console.log('Initializing Bridge Helper');
-        const existingButton = document.getElementById('bridge-helper-float');
-        if (existingButton) {
-            existingButton.remove();
-        }
+    const initialize = () => {
         createFloatingButton();
+    };
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initialize);
+    } else {
+        initialize();
     }
-
-    // Run initialization
-    init();
-
-    // Re-run initialization when URL changes
-    let lastUrl = location.href;
-    new MutationObserver(() => {
-        const url = location.href;
-        if (url !== lastUrl) {
-            lastUrl = url;
-            init();
-        }
-    }).observe(document, {subtree: true, childList: true});
-
 })();
-
-
-
